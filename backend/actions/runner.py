@@ -11,6 +11,8 @@ import base64
 import json
 import os
 import queue
+import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -24,6 +26,25 @@ VIEWPORT = {"width": 1280, "height": 800}
 FIND_TIMEOUT_MS = 8000
 USER_TIMEOUT_SEC = 15 * 60  # 사용자 입력을 이만큼 기다려도 없으면 실패로 끝낸다
 SCREEN_INTERVAL_SEC = 0.7
+
+# Render는 빌드 때 받은 ~/.cache를 실행 환경에 남기지 않는다. 브라우저를 패키지 폴더(.venv 안)에 두게 한다.
+if os.getenv("RENDER"):
+    os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
+
+_install_lock = threading.Lock()
+
+
+def _launch(p):
+    """크로미움이 설치돼 있지 않으면 한 번 받아서 다시 띄운다 (빌드 단계에서 설치를 빠뜨린 배포 대비)."""
+    try:
+        return p.chromium.launch(headless=True)
+    except Exception as e:
+        if "Executable doesn't exist" not in str(e):
+            raise
+    with _install_lock:
+        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
+                       check=True, capture_output=True, timeout=600)
+    return p.chromium.launch(headless=True)
 
 # 화면에 보이는 상태 (프론트 JobStatus와 같음)
 QUEUED, RUNNING, NEEDS_INPUT, NEEDS_CONFIRM, DONE, FAILED, CANCELLED = (
@@ -88,9 +109,10 @@ class ActionRun:
 
         self.status = RUNNING
         self._on_event("시작", "")
+        self.message = "브라우저를 준비하고 있어요"
         try:
             with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
+                browser = _launch(p)
                 context = browser.new_context(viewport=VIEWPORT, locale="ko-KR")
                 page = context.new_page()
                 try:
