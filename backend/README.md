@@ -30,11 +30,11 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 프론트(Vercel)는 `frontend/vercel.json`에서 `/api`를 이 서버로 리라이트한다.
 
 - Root Directory: `backend`
-- Build Command: `pip install -r requirements.txt && python -m playwright install chromium`
+- Build Command: `pip install -r requirements.txt && PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium`
+  - 크로미움을 패키지 폴더(.venv 안)에 받는다. 기본 위치(`/opt/render/.cache`)는 빌드 뒤 실행 환경에 남지 않는다.
+    실행 중에는 `actions/runner.py`가 Render에서 같은 경로를 쓰고, 그래도 없으면 첫 작업 때 한 번 받는다
 - Start Command: `uvicorn app:app --host 0.0.0.0 --port $PORT`
-- 환경변수 (`.env.example` 참고)
-  - `PLAYWRIGHT_BROWSERS_PATH=0`: 브라우저를 패키지 폴더 안에 받는다. 기본 위치(`/opt/render/.cache`)는 빌드 뒤 실행 환경에 남지 않는다
-  - `IDLY_SELF_URL=https://<서비스>.onrender.com`, `FORWARDED_ALLOW_IPS=*`
+- 환경변수 (`.env.example` 참고): `IDLY_SELF_URL=https://<서비스>.onrender.com`, `FORWARDED_ALLOW_IPS=*`
 
 ## IDly 계정과 메일함
 
