@@ -25,6 +25,17 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 
 프론트는 `frontend`에서 `npm run dev` (개발 중 vite가 `/api`를 백엔드로 프록시).
 
+## Render 배포
+
+프론트(Vercel)는 `frontend/vercel.json`에서 `/api`를 이 서버로 리라이트한다.
+
+- Root Directory: `backend`
+- Build Command: `pip install -r requirements.txt && python -m playwright install chromium`
+- Start Command: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+- 환경변수 (`.env.example` 참고)
+  - `PLAYWRIGHT_BROWSERS_PATH=0`: 브라우저를 패키지 폴더 안에 받는다. 기본 위치(`/opt/render/.cache`)는 빌드 뒤 실행 환경에 남지 않는다
+  - `IDLY_SELF_URL=https://<서비스>.onrender.com`, `FORWARDED_ALLOW_IPS=*`
+
 ## IDly 계정과 메일함
 
 - IDly 계정(이메일+비밀번호)으로 가입·로그인한다. 세션은 httpOnly 쿠키(`idly_session`), 30일.
