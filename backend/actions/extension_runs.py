@@ -14,6 +14,7 @@ from typing import Any, Callable, Deque, Dict, List, Optional
 from urllib.parse import urlparse
 
 from .ai_agent import MAX_STEPS, _DESTRUCTIVE_RE, _ask
+from .errors import explain
 from .flows import DEMO_DOMAIN, SELF_URL
 
 STATUSES = {"대기", "진행 중", "입력 필요", "확인 필요", "완료", "실패", "취소됨"}
@@ -84,6 +85,9 @@ class ExtensionRun:
             return
         if status != self.status:
             self._on_event({"입력 필요": "사용자 입력 요청", "확인 필요": "최종 확인 요청"}.get(status, status), message[:200])
+        if error:
+            print(f"[agent] {self.id} {self.domain} 확장 실패: {error}")
+            error = explain(error, url=start_url(self.domain))
         self.status, self.message, self.step, self.error = status, message[:300], step, error
 
     def decide(self, api_key: str, url: str, state: Dict[str, Any], history: List[str]) -> Dict[str, Any]:

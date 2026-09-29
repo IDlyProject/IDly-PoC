@@ -230,10 +230,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (run.status === '취소됨') return
     if (run.status === '실패') {
       if (job.charged) setCredits((c) => c + 1)
+      // 어디서 돌다 실패했는지도 보여준다 (확장이 안 잡혀 클라우드로 간 경우를 알 수 있게)
+      const where = run.mode === 'extension' ? '내 크롬' : run.mode ? '클라우드 브라우저' : null
+      const reason = run.error ?? run.message
       setJobs((prev) =>
         prev.map((j) =>
           j.id === job.id
-            ? { ...j, status: '직접 처리', charged: false, note: `에이전트가 진행하지 못했어요 (${run.error ?? run.message}) · ${refundNote}` }
+            ? {
+                ...j,
+                status: '직접 처리',
+                charged: false,
+                note: `에이전트가 진행하지 못했어요${where ? ` (${where})` : ''}: ${reason} · ${refundNote}`,
+              }
             : j,
         ),
       )
