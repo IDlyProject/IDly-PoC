@@ -28,6 +28,12 @@ SESSION_DAYS = 30
 _lock = threading.Lock()
 _PG = DATABASE_URL.startswith("postgres")
 
+# Vercel 같은 서버리스는 파일시스템이 읽기 전용이라 SQLite 파일·키 파일을 만들 수 없다
+if os.getenv("VERCEL"):
+    missing = [name for name in ("DATABASE_URL", "IDLY_SECRET_KEY") if not os.getenv(name, "").strip()]
+    if missing:
+        raise RuntimeError(f"Vercel 환경변수에 {', '.join(missing)}를 설정해주세요 (Project Settings > Environment Variables).")
+
 _TABLES = """
 CREATE TABLE IF NOT EXISTS users (
   id {pk},

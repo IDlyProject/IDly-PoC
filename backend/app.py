@@ -28,7 +28,14 @@ from actions.runner import ActionRun, get_run, list_runs, start_run  # noqa: E40
 from imap_sync import MAX_PER_FOLDER, Credential, SyncJob, connect, get_job, start_sync  # noqa: E402
 from providers import PROVIDERS, detect_provider, get_provider  # noqa: E402
 
+# 이 호스트 이름으로 온 요청만 받는다 (DNS 리바인딩 방지). 쉼표로 여러 개, "*.example.com" 와일드카드 가능.
+# Render·Vercel에 배포하면 플랫폼이 넣어 주는 배포 주소도 자동으로 허용한다.
 ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
+ALLOWED_HOSTS += [
+    os.environ[name]
+    for name in ("RENDER_EXTERNAL_HOSTNAME", "VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL")
+    if os.getenv(name)
+]
 SESSION_COOKIE = "idly_session"
 
 app = FastAPI(title="IDly web backend")
