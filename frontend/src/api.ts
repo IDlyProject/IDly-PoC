@@ -50,8 +50,8 @@ export interface ActionRun {
   service: string;
   domain: string;
   action: string;
-  // flow: 검증된 서비스별 흐름, ai: AI가 화면을 보며 메뉴를 찾아감
-  mode: "flow" | "ai";
+  // flow: 검증된 흐름(클라우드), ai: AI 탐색(클라우드), extension: 사용자 크롬의 IDly 확장
+  mode: "flow" | "ai" | "extension";
   status: "대기" | "진행 중" | "입력 필요" | "확인 필요" | "완료" | "실패" | "취소됨";
   step: number;
   steps: number;
@@ -59,6 +59,22 @@ export interface ActionRun {
   error: string | null;
   hasScreen: boolean;
 }
+
+// 확장에 넘기는 시작 정보 (이 작업 전용 토큰 포함)
+export interface ExtensionLaunch {
+  token: string;
+  startUrl: string;
+  apiBase: string;
+}
+
+// IDly 웹 ↔ 크롬 확장 (extension/bridge.js)
+export const extensionBridge = {
+  start: (run: ActionRun & ExtensionLaunch) =>
+    window.postMessage({ source: "idly-web", type: "START", run }, window.location.origin),
+  focus: (runId: string) => window.postMessage({ source: "idly-web", type: "FOCUS", runId }, window.location.origin),
+  ping: () => window.postMessage({ source: "idly-web", type: "PING" }, window.location.origin),
+  installed: () => !!document.documentElement.dataset.idlyExtension,
+};
 
 // 원격 화면 입력
 export type ActionInput =
@@ -123,8 +139,14 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
   syncStatus: (id: string) => request<SyncJob>(`/api/sync/${id}`),
-  startAction: (body: { domain: string; service: string; account_email: string; action: string }) =>
-    request<ActionRun>("/api/actions", { method: "POST", body: JSON.stringify(body) }),
+  startAction: (body: {
+    domain: string;
+    service: string;
+    account_email: string;
+    action: string;
+    // extension이면 응답에 확장에 넘길 토큰·시작 주소가 들어 있다
+    runner: "extension" | "cloud";
+  }) => request<ActionRun & Partial<ExtensionLaunch>>("/api/actions", { method: "POST", body: JSON.stringify(body) }),
   actionStatus: (id: string) => request<ActionRun>(`/api/actions/${id}`),
   actionInput: (id: string, input: ActionInput) =>
     request<ActionRun>(`/api/actions/${id}/input`, { method: "POST", body: JSON.stringify(input) }),

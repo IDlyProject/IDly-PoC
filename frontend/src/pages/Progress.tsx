@@ -155,6 +155,17 @@ function RemoteScreen({ job, interactive = false }: { job: Job; interactive?: bo
   )
 }
 
+// 확장 작업은 사용자 크롬의 탭에서 진행된다. 원격 화면 대신 그 탭으로 보내는 버튼
+function ExtensionTab({ job }: { job: Job }) {
+  const { focusJobTab } = useStore()
+  return (
+    <div className="row gap small">
+      <span className="muted">크롬의 새 탭에서 IDly 확장이 진행 중이에요. 탭 오른쪽 아래 패널에서도 확정·취소할 수 있어요.</span>
+      <button onClick={() => focusJobTab(job.id)}>진행 중인 탭 열기</button>
+    </div>
+  )
+}
+
 function TodoCard({ job, service }: { job: Job; service: string }) {
   const { accounts, confirmJob, resolveInput, markManualDone, switchToManual, cancelJob } = useStore()
   const account = accounts.find((a) => a.id === job.accountId)
@@ -168,8 +179,15 @@ function TodoCard({ job, service }: { job: Job; service: string }) {
           </strong>
           <span className="tag strong">입력 필요</span>
         </div>
-        <div className="small">{job.note}. 아래 화면에서 직접 입력하면 IDly가 이어서 진행해요.</div>
-        {job.runId ? (
+        {job.mode === 'extension' ? (
+          <>
+            <div className="small">{job.note} 비밀번호는 IDly로 전달되지 않고 그 탭에서만 입력돼요.</div>
+            <ExtensionTab job={job} />
+          </>
+        ) : (
+          <div className="small">{job.note}. 아래 화면에서 직접 입력하면 IDly가 이어서 진행해요.</div>
+        )}
+        {job.mode === 'extension' ? null : job.runId ? (
           <RemoteScreen job={job} interactive />
         ) : (
           <div className="ph" style={{ height: 220 }}>
@@ -196,7 +214,7 @@ function TodoCard({ job, service }: { job: Job; service: string }) {
           <span className="tag strong">최종 확인</span>
         </div>
         <div className="small">{job.note}</div>
-        {job.runId && <RemoteScreen job={job} />}
+        {job.mode === 'extension' ? <ExtensionTab job={job} /> : job.runId && <RemoteScreen job={job} />}
         <div className="row gap">
           <button className="primary" onClick={() => confirmJob(job.id)}>
             {job.action} 확정

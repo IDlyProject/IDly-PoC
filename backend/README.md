@@ -73,6 +73,19 @@ OpenAI로 나가는 것: 도메인, 발신자 이름, 신호 메일 제목, 결�
 
 ## 계정 정리 에이전트
 
+### 크롬 확장 (기본)
+사용자 크롬의 IDly 확장(`../extension`)이 새 탭에서 진행한다. 이미 로그인된 브라우저를 그대로 쓰고,
+비밀번호·쿠키는 브라우저 밖으로 나가지 않는다. AI 판단(`OPENAI_API_KEY`)은 서버에서 한다.
+
+- 설치(개발): `chrome://extensions` → 개발자 모드 → "압축해제된 확장 프로그램 로드" → `extension` 폴더
+- 웹 ↔ 확장: `extension/bridge.js` (IDly 웹 출처에서만 동작, `manifest.json`의 `matches`). 운영 도메인이 생기면 추가
+- 흐름: 웹이 `POST /api/actions {runner: "extension"}` → 작업 토큰·시작 주소를 확장에 전달 →
+  확장이 매 단계 버튼·링크 목록을 `POST /api/agent/{id}/decide`로 보내 다음 행동을 받음 →
+  상태는 `POST /api/agent/{id}/status`, 웹의 이어서 진행·확정·취소는 `GET /api/agent/{id}/commands`로 가져감
+- 비밀번호 칸이 보이는 화면의 글자는 서버로 보내지 않고 사용자에게 로그인을 맡긴다 (로그인이 끝나면 자동으로 이어감)
+- 되돌릴 수 없는 버튼은 서버가 규칙으로도 표시해 사용자 확정을 받는다 (작업 탭 패널 또는 웹 정리 내역)
+
+### 클라우드 브라우저 (확장이 없을 때)
 - 흐름 정의 `actions/flows.py`, 실행기 `actions/runner.py` (Playwright Chromium, 작업마다 새 시크릿 브라우저)
 - 로그인·본인인증은 원격 화면으로 사용자가 직접, 탈퇴·해지 버튼 직전에는 사용자 확정
 - `IDLY_DEMO=1`이면 보고서에 데모 서비스 계정이 나와 `/demo` 사이트에서 흐름을 끝까지 해볼 수 있다

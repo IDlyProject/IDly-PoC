@@ -10,7 +10,7 @@ const ACTION_NOTE: Record<Action, string> = {
 }
 
 export default function Cleanup() {
-  const { accounts, selected, credits, startCleanup } = useStore()
+  const { accounts, selected, credits, startCleanup, extension, live } = useStore()
   const navigate = useNavigate()
   const [agreed, setAgreed] = useState(false)
 
@@ -47,11 +47,27 @@ export default function Cleanup() {
           <div>
             <div className="section-title">IDly가 대신 처리 · {auto.length}개</div>
             <div className="muted small">
-              클라우드 브라우저에서 IDly 에이전트가 해당 사이트의 탈퇴·해지 메뉴를 찾아 진행합니다. 로그인·본인인증은
-              화면을 넘겨받아 직접 입력하고, 되돌릴 수 없는 버튼은 누르기 전에 꼭 확인을 받아요. 찾지 못하면 직접 처리
-              안내로 바꾸고 이용권을 돌려드려요.
+              {extension
+                ? '내 크롬의 새 탭에서 IDly 확장이 탈퇴·해지 메뉴를 찾아 진행해요. 이미 로그인된 사이트는 로그인 없이 진행되고, 로그인이 필요하면 그 탭에서 직접 하시면 돼요. 비밀번호는 IDly로 전달되지 않아요.'
+                : 'IDly 서버의 브라우저에서 에이전트가 진행하고, 로그인·본인인증은 원격 화면으로 직접 입력해요.'}{' '}
+              되돌릴 수 없는 버튼은 누르기 전에 꼭 확인을 받고, 찾지 못하면 직접 처리 안내로 바꾸고 이용권을 돌려드려요.
             </div>
           </div>
+          {!extension && live && (
+            <div className="notice small">
+              <strong>IDly 크롬 확장을 설치하면 더 편해요</strong>
+              <span>
+                이미 로그인된 내 브라우저에서 진행돼 다시 로그인하지 않아도 되고, 본인인증 팝업도 평소처럼 떠요.
+              </span>
+              <ol className="steps">
+                <li>크롬 주소창에 chrome://extensions 입력 → 오른쪽 위 개발자 모드 켜기</li>
+                <li>
+                  "압축해제된 확장 프로그램 로드" → 프로젝트의 <code>extension</code> 폴더 선택
+                </li>
+                <li>이 페이지를 새로고침</li>
+              </ol>
+            </div>
+          )}
           <ItemTable items={auto} />
         </section>
       )}

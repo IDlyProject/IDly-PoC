@@ -1,6 +1,15 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { accounts as mockAccounts, CONNECTED_EMAIL, PACK, type Account, type Action } from './mock'
-import { api, type ActionInput, type ActionRun, type DiscoveryReport, type Session, type SyncJob } from './api'
+import {
+  api,
+  extensionBridge,
+  type ActionInput,
+  type ActionRun,
+  type DiscoveryReport,
+  type ExtensionLaunch,
+  type Session,
+  type SyncJob,
+} from './api'
 
 // 정리는 클라우드 브라우저에서 에이전트가 대행한다.
 // 로그인·본인인증이 필요하면 '입력 필요'로 멈추고 사용자가 원격 화면에서 직접 입력한다.
@@ -15,8 +24,10 @@ export interface Job {
   charged: boolean
   // 사용자가 원격 화면에서 인증을 마쳤는지 (목업 시뮬레이션용)
   inputDone?: boolean
-  // 실제 클라우드 브라우저 작업 ID (live). 없으면 목업 시뮬레이션
+  // 실제 에이전트 작업 ID (live). 없으면 목업 시뮬레이션
   runId?: string
+  // extension: 사용자 크롬의 IDly 확장, 그 외: 서버 클라우드 브라우저
+  mode?: ActionRun['mode']
   note?: string
 }
 
@@ -83,6 +94,9 @@ interface Store {
   startCleanup: () => void
   // 원격 화면 입력 (클릭·글자·키)을 에이전트 브라우저로 보낸다
   sendInput: (jobId: string, input: ActionInput) => void
+  // IDly 크롬 확장이 설치돼 있는지 (있으면 정리를 사용자 크롬에서 진행)
+  extension: boolean
+  focusJobTab: (jobId: string) => void
   confirmJob: (jobId: string) => void
   markManualDone: (jobId: string) => void
   resolveInput: (jobId: string) => void
@@ -108,6 +122,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<Job[]>([])
   // StrictMode에서 두 번 불려도 메일마다 탐색은 한 번만 시작
   const scanRequested = useRef(new Set<string>())
+  const [extension, setExtension] = useState(extensionBridge.installed())
+
+  // IDly 확장이 페이지에 알려오면 켠다 (extension/bridge.js)
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.source === window && e.data?.source === 'idly-ext' && e.data.type === 'READY') setExtension(true)
+    }
+    window.addEventListener('message', onMessage)
+    extensionBridge.ping()
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   const patchMailbox = (email: string, patch: Partial<MailboxState>) =>
     setMailboxes((prev) => prev.map((m) => (m.email === email ? { ...m, ...patch } : m)))
@@ -336,16 +361,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setJobs((prev) => [...newJobs, ...prev])
       setSelected({})
       if (!live) return
-      // live: 에이전트 작업을 서버에 시작한다. 지원하지 않는 곳이면 직접 처리로 돌리고 환불
+      // live: 에이전트 작업을 서버에 만든다. 확장이 있으면 사용자 크롬에서, 없으면 클라우드 브라우저에서.
+      // 지원하지 않는 곳이면 직접 처리로 돌리고 환불
+      const runner = extension ? 'extension' : 'cloud'
       newJobs
         .filter((j) => j.charged)
         .forEach((job) => {
           const account = allAccounts.find((a) => a.id === job.accountId)!
           api
-            .startAction({ domain: domainOf(job.accountId), service: account.service, account_email: account.email, action: job.action })
-            .then((run) => setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, runId: run.id, note: run.message } : j))))
+            .startAction({
+              domain: domainOf(job.accountId),
+              service: account.service,
+              account_email: account.email,
+              action: job.action,
+              runner,
+            })
+            .then((run) => {
+              if (run.mode === 'extension') extensionBridge.start(run as ActionRun & ExtensionLaunch)
+              setJobs((prev) =>
+                prev.map((j) => (j.id === job.id ? { ...j, runId: run.id, mode: run.mode, note: run.message } : j)),
+              )
+            })
             .catch((e) => applyRun(job, { status: '실패', error: e.message, message: '' } as ActionRun))
         })
+    },
+    extension,
+    focusJobTab: (jobId) => {
+      const runId = jobs.find((j) => j.id === jobId)?.runId
+      if (runId) extensionBridge.focus(runId)
     },
     sendInput: (jobId, input) => {
       const runId = jobs.find((j) => j.id === jobId)?.runId
