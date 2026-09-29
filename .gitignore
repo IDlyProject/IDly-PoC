@@ -1,0 +1,21 @@
+# Secrets and local runtime data
+backend/.env
+backend/data/
+backend/.venv/
+**/secret.key
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+frontend/.impeccable/
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
