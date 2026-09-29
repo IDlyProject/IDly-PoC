@@ -1,4 +1,5 @@
-// 개발 환경에서는 vite 프록시를 거치고, 배포 환경에서는 같은 웹 백엔드를 호출한다.
+// 개발 환경에서는 vite 프록시를, 배포 환경(Vercel)에서는 vercel.json 리라이트를 거쳐 Render 백엔드를 호출한다.
+// 같은 출처로 보이므로 세션 쿠키(SameSite=Lax)가 그대로 동작한다.
 
 import type { Account } from "./mock";
 
