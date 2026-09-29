@@ -105,6 +105,7 @@ def run_goal(run, page) -> None:
         raise RuntimeError("AI 탐색 모드는 OpenAI API 키가 있어야 해요.")
     domain, action, service = run.domain, run.action, run.service
     start = f"{SELF_URL}/demo/mypage" if domain == DEMO_DOMAIN else f"https://{domain}"
+    run._url = start
     page.goto(start, wait_until="domcontentloaded", timeout=30000)
     history: List[str] = []
     login_asked = False

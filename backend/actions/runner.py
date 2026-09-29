@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 
+from .errors import explain
 from .flows import Flow, Step
 
 VIEWPORT = {"width": 1280, "height": 800}
@@ -74,6 +75,8 @@ class ActionRun:
         self.message = ""
         self.error: Optional[str] = None
         self.screen: Optional[bytes] = None
+        # 마지막으로 열려고 한 주소 (실패 이유에 사이트 이름을 넣는다)
+        self._url: Optional[str] = None
         self._commands: "queue.Queue[Dict[str, Any]]" = queue.Queue()
         self._on_event = on_event or (lambda event, detail: None)
 
@@ -137,13 +140,16 @@ class ActionRun:
             self.message = "취소했어요"
             self._on_event("취소", "")
         except Exception as e:
+            print(f"[agent] {self.id} {self.domain} 실패: {e}")
+            step = self.flow.steps[self.step_index].label if self.flow else None
             self.status = FAILED
-            self.error = str(e).splitlines()[0][:200]
+            self.error = explain(str(e), step=step, url=getattr(e, "url", None) or self._url)
             self.message = "진행하지 못했어요"
             self._on_event("실패", self.error)
 
     def _do(self, page, step: Step) -> None:
         if step.kind == "goto":
+            self._url = step.url
             page.goto(step.url, wait_until="domcontentloaded")
         elif step.kind == "click":
             if not self._click(page, step):
